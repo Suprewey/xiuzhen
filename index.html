@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>修真打卡录</title>
+  <style>
+    body {
+      font-family: "微软雅黑", sans-serif;
+      background: #0a1a2a;
+      color: #e0f7ff;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 400px;
+      margin: 0 auto;
+      padding: 20px;
+      background: rgba(0, 30, 60, 0.8);
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0, 180, 255, 0.3);
+    }
+    h1 {
+      color: #00d0ff;
+      text-shadow: 0 0 10px #00d0ff;
+    }
+    button {
+      background: #00aaff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      margin: 10px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    button:active {
+      transform: translateY(2px);
+    }
+    .info {
+      margin: 15px 0;
+      line-height: 1.6;
+      font-size: 16px;
+    }
+    .log {
+      height: 100px;
+      overflow-y: auto;
+      text-align: left;
+      background: #001a33;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    .level-up {
+      animation: levelup 1s ease-in-out;
+      color: #ffcc00;
+      font-weight: bold;
+    }
+    @keyframes levelup {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.2); opacity: 0.8; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌌 修真打卡录</h1>
+    <div class="info">
+      <p>境界：<span id="level">炼气期一层</span></p>
+      <p>修为：<span id="exp">0</span> / <span id="nextExp">100</span></p>
+      <p>上次打卡：<span id="lastDay">从未</span></p>
+    </div>
+
+    <button onclick="checkIn()">📅 今日打卡</button>
+    <button onclick="meditate()">🧘‍♂️ 静坐修炼</button>
+
+    <div class="log" id="log">
+      欢迎踏入修真界，开始你的长生之路...
+    </div>
+  </div>
+
+  <script>
+    // 游戏数据
+    const levels = [
+      "炼气期一层", "炼气期二层", "炼气期三层",
+      "筑基期", "金丹期", "元婴期",
+      "化神期", "合体期", "大乘期", "渡劫期"
+    ];
+    let player = {
+      levelIndex: 0,
+      exp: 0,
+      lastCheckIn: null // 存储日期字符串
+    };
+
+    const expNeeded = (level) => 100 * Math.pow(1.5, level);
+
+    // 加载本地数据
+    function loadGame() {
+      const saved = localStorage.getItem("xiuzhenSave");
+      if (saved) {
+        player = JSON.parse(saved);
+        updateUI();
+        checkStreak();
+      } else {
+        updateUI();
+      }
+    }
+
+    // 保存游戏
+    function saveGame() {
+      localStorage.setItem("xiuzhenSave", JSON.stringify(player));
+    }
+
+    // 更新界面
+    function updateUI() {
+      document.getElementById("level").textContent = levels[player.levelIndex];
+      document.getElementById("exp").textContent = player.exp;
+      document.getElementById("nextExp").textContent = Math.ceil(expNeeded(player.levelIndex));
+      document.getElementById("lastDay").textContent = player.lastCheckIn || "从未";
+    }
+
+    // 打卡
+    function checkIn() {
+      const today = new Date().toDateString();
+      const last = player.lastCheckIn;
+
+      if (last === today) {
+        log("你今天已经打过卡了，静心修炼吧。");
+        return;
+      }
+
+      // 连续打卡奖励
+      let bonus = 1;
+      if (last) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (new Date(last).toDateString() === yesterday.toDateString()) {
+          bonus = 2; // 连续打卡双倍
+          log("✅ 连续打卡！获得双倍修为！");
+        }
+      }
+
+      const gain = 50 * bonus;
+      player.exp += gain;
+      player.lastCheckIn = today;
+      log(`🎉 打卡成功！获得 ${gain} 修为！`);
+
+      checkLevelUp();
+      updateUI();
+      saveGame();
+    }
+
+    // 静坐修炼（随机获得修为）
+    function meditate() {
+      const gain = Math.floor(Math.random() * 20) + 10;
+      player.exp += gain;
+      log(`🧘‍♂️ 静坐片刻，感悟天地，获得 ${gain} 修为。`);
+      checkLevelUp();
+      updateUI();
+      saveGame();
+    }
+
+    // 检查是否升级
+    function checkLevelUp() {
+      const needed = expNeeded(player.levelIndex);
+      if (player.exp >= needed && player.levelIndex < levels.length - 1) {
+        player.levelIndex++;
+        player.exp = 0;
+        const levelName = levels[player.levelIndex];
+        log(`🔥 恭喜突破至【${levelName}】！`);
+        document.getElementById("level").classList.add("level-up");
+        setTimeout(() => {
+          document.getElementById("level").classList.remove("level-up");
+        }, 1000);
+      }
+    }
+
+    // 日志输出
+    function log(text) {
+      const logDiv = document.getElementById("log");
+      const entry = document.createElement("div");
+      const time = new Date().toLocaleTimeString();
+      entry.textContent = `[${time}] ${text}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    // 检查连续性（每日首次进入提醒）
+    function checkStreak() {
+      if (!player.lastCheckIn) return;
+      const lastDate = new Date(player.lastCheckIn);
+      const today = new Date();
+      const diffDays = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
+      if (diffDays > 1) {
+        log("⚠️ 已断签，连续打卡中断。");
+      } else if (diffDays === 0) {
+        log("🟢 今日已打卡，继续努力！");
+      }
+    }
+
+    // 初始化
+    window.onload = loadGame;
+  </script>
+</body>
+</html>
